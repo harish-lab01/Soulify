@@ -64,11 +64,15 @@ export default function Home() {
 
       {/* FAB — mobile only, desktop uses sidebar button */}
       <motion.button
-        className="fixed bottom-24 right-5 z-40 w-14 h-14 rounded-full text-white flex items-center justify-center shadow-xl shadow-violet-300 lg:hidden"
-        style={{ background: 'linear-gradient(135deg, #7C6FF7 0%, #F472B6 100%)' }}
+        className="fixed bottom-[88px] right-5 z-40 w-14 h-14 rounded-full text-white flex items-center justify-center shadow-xl shadow-violet-300 lg:hidden"
+        style={{
+          background: 'linear-gradient(135deg, #7C6FF7 0%, #F472B6 100%)',
+          bottom: 'calc(72px + env(safe-area-inset-bottom, 0px) + 16px)',
+        }}
         onClick={() => setShowCreate(true)}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
+        aria-label="Create post"
       >
         <Plus size={24} />
       </motion.button>

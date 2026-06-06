@@ -71,11 +71,15 @@ export default function CommunityPage() {
 
       {/* FAB */}
       <motion.button
-        className="fixed bottom-24 right-5 z-40 w-14 h-14 rounded-full text-white flex items-center justify-center shadow-xl"
-        style={{ background: `linear-gradient(135deg, ${community.color} 0%, ${community.color}cc 100%)` }}
+        className="fixed right-5 z-40 w-14 h-14 rounded-full text-white flex items-center justify-center shadow-xl"
+        style={{
+          background: `linear-gradient(135deg, ${community.color} 0%, ${community.color}cc 100%)`,
+          bottom: 'calc(72px + env(safe-area-inset-bottom, 0px) + 16px)',
+        }}
         onClick={() => setShowCreate(true)}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
+        aria-label="Create post"
       >
         <Plus size={24} />
       </motion.button>

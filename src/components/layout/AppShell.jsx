@@ -45,8 +45,11 @@ export default function AppShell() {
       {/* ── Mobile layout ──────────────────────────────────── */}
       <div
         className="lg:hidden relative z-10"
-        // Soul page manages its own height; other pages need pb for bottom nav
-        style={{ paddingBottom: isFullScreen ? '0' : '80px' }}
+        style={{
+          paddingBottom: isFullScreen
+            ? '0'
+            : 'calc(72px + env(safe-area-inset-bottom, 0px))',
+        }}
       >
         <Outlet />
       </div>

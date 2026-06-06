@@ -125,8 +125,8 @@ export default function CreatePost({ onClose, communityId = null }) {
   };
 
   return (
-    <div>
-      {/* Header */}
+    <div className="flex flex-col">
+      {/* Header row (Back / user info + Close) */}
       <div className="flex items-center justify-between mb-4">
         {step === 'compose' ? (
           <button
@@ -147,6 +147,7 @@ export default function CreatePost({ onClose, communityId = null }) {
       </div>
 
       <AnimatePresence mode="wait">
+        {/* ── Step 1: Type selection ── */}
         {step === 'type' && (
           <motion.div
             key="type"
@@ -175,13 +176,14 @@ export default function CreatePost({ onClose, communityId = null }) {
           </motion.div>
         )}
 
+        {/* ── Step 2: Compose ── */}
         {step === 'compose' && (
           <motion.div
             key="compose"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="space-y-4"
+            className="flex flex-col gap-4"
           >
             {/* Text */}
             {(postType === 'text' || postType === 'mood' || postType === 'image') && (
@@ -209,7 +211,7 @@ export default function CreatePost({ onClose, communityId = null }) {
               <div>
                 {imagePreview ? (
                   <div className="relative">
-                    <img src={imagePreview} className="w-full rounded-2xl max-h-52 object-cover" alt="Preview" />
+                    <img src={imagePreview} className="w-full rounded-2xl max-h-44 object-cover" alt="Preview" />
                     <button
                       onClick={() => { setImageFile(null); setImagePreview(null); setError(''); }}
                       className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1.5"
@@ -221,9 +223,9 @@ export default function CreatePost({ onClose, communityId = null }) {
                     </p>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center gap-2 p-8 border-2 border-dashed border-soul-border rounded-2xl cursor-pointer hover:border-soul-primary/40 transition-colors">
+                  <label className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-soul-border rounded-2xl cursor-pointer hover:border-soul-primary/40 transition-colors">
                     <Image size={28} className="text-soul-muted" />
-                    <span className="text-sm text-soul-muted font-medium">Click to upload image</span>
+                    <span className="text-sm text-soul-muted font-medium">Tap to upload image</span>
                     <span className="text-xs text-soul-muted opacity-60">JPG, PNG, GIF · max 15MB</span>
                     <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                   </label>
@@ -268,7 +270,7 @@ export default function CreatePost({ onClose, communityId = null }) {
               </motion.div>
             )}
 
-            {/* Submit */}
+            {/* Submit — always visible at the bottom */}
             <Button onClick={handleSubmit} fullWidth disabled={!canSubmit()}>
               <div className="flex items-center justify-center gap-2">
                 {submitting ? (
