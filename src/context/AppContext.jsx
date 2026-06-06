@@ -8,8 +8,12 @@ export function AppProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const [soulMode, setSoulMode] = useState('chat');
 
+  // Notification badge counts — populated by App.jsx subscriptions
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [unreadDMCount, setUnreadDMCount] = useState(0);
+
   const addToast = (message, type = 'success') => {
-    const id = Date.now();
+    const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => removeToast(id), 4000);
   };
@@ -30,6 +34,10 @@ export function AppProvider({ children }) {
         removeToast,
         soulMode,
         setSoulMode,
+        unreadNotifCount,
+        setUnreadNotifCount,
+        unreadDMCount,
+        setUnreadDMCount,
       }}
     >
       {children}

@@ -10,6 +10,7 @@ import FeedList from '../components/feed/FeedList';
 import DailyPrompt from '../components/feed/DailyPrompt';
 import CreatePost from '../components/feed/CreatePost';
 import MoodCheckin from '../components/mood/MoodCheckin';
+import StoryBar from '../components/stories/StoryBar';
 import Modal from '../components/ui/Modal';
 
 const pageVariants = {
@@ -18,10 +19,16 @@ const pageVariants = {
   exit: { opacity: 0, y: -20, transition: { duration: 0.2 } },
 };
 
+const FEED_TABS = [
+  { id: 'all',       label: '🌍 All' },
+  { id: 'following', label: '💜 Following' },
+];
+
 export default function Home() {
   const { user, userProfile } = useAuth();
   const { todayMood, setTodayMood, showMoodCheckin, setShowMoodCheckin } = useApp();
   const [showCreate, setShowCreate] = useState(false);
+  const [feedTab, setFeedTab] = useState('all');
 
   // Check if user has checked in today
   useEffect(() => {
@@ -31,8 +38,7 @@ export default function Home() {
       if (checkin) {
         setTodayMood(checkin.mood);
       } else {
-        // Show check-in after a short delay
-        const timer = setTimeout(() => setShowMoodCheckin(true), 1000);
+        const timer = setTimeout(() => setShowMoodCheckin(true), 1200);
         return () => clearTimeout(timer);
       }
     });
@@ -55,19 +61,45 @@ export default function Home() {
       </div>
 
       <div className="px-4 lg:px-6 py-4 max-w-lg lg:max-w-full mx-auto space-y-4">
+
+        {/* Stories Row */}
+        <div className="glass-card p-3">
+          <StoryBar />
+        </div>
+
         {/* Daily Prompt */}
         <DailyPrompt onRespond={() => setShowCreate(true)} />
 
+        {/* Feed tabs */}
+        <div className="flex gap-2">
+          {FEED_TABS.map(tab => (
+            <motion.button
+              key={tab.id}
+              onClick={() => setFeedTab(tab.id)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                feedTab === tab.id
+                  ? 'text-white shadow-sm'
+                  : 'bg-white/60 text-soul-muted hover:bg-white/80'
+              }`}
+              style={feedTab === tab.id ? { background: 'linear-gradient(135deg, #7C6FF7 0%, #F472B6 100%)' } : {}}
+              whileTap={{ scale: 0.95 }}
+            >
+              {tab.label}
+            </motion.button>
+          ))}
+        </div>
+
         {/* Feed */}
-        <FeedList />
+        <FeedList feedMode={feedTab} />
       </div>
 
-      {/* FAB — mobile only, desktop uses sidebar button */}
+      {/* FAB — mobile only */}
       <motion.button
-        className="fixed bottom-[88px] right-5 z-40 w-14 h-14 rounded-full text-white flex items-center justify-center shadow-xl shadow-violet-300 lg:hidden"
+        className="fixed z-40 w-14 h-14 rounded-full text-white flex items-center justify-center shadow-xl shadow-violet-300 lg:hidden"
         style={{
           background: 'linear-gradient(135deg, #7C6FF7 0%, #F472B6 100%)',
           bottom: 'calc(72px + env(safe-area-inset-bottom, 0px) + 16px)',
+          right: '20px',
         }}
         onClick={() => setShowCreate(true)}
         whileHover={{ scale: 1.1 }}

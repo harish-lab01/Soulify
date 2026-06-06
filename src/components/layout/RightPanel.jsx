@@ -1,16 +1,16 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { MessageSquare, Hash, Bell } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
-import { COMMUNITIES, MOODS, DAILY_PROMPTS } from '../../utils/constants';
+import { COMMUNITIES, MOODS, DAILY_PROMPTS, ROOMS } from '../../utils/constants';
 import { getDayOfYear } from '../../utils/helpers';
-import Avatar from '../ui/Avatar';
 import SoulAvatar from '../soul/SoulAvatar';
 
 export default function RightPanel() {
   const navigate = useNavigate();
   const { userProfile } = useAuth();
-  const { todayMood } = useApp();
+  const { todayMood, unreadNotifCount, unreadDMCount } = useApp();
 
   const todayMoodData = MOODS.find(m => m.id === todayMood);
   const todayPrompt = DAILY_PROMPTS[getDayOfYear() % DAILY_PROMPTS.length];
@@ -19,6 +19,44 @@ export default function RightPanel() {
 
   return (
     <aside className="hidden xl:flex flex-col w-72 2xl:w-80 h-screen sticky top-0 py-6 px-4 gap-4 overflow-y-auto">
+
+      {/* Notification + DM quick actions */}
+      <div className="flex gap-2">
+        <motion.button
+          onClick={() => navigate('/notifications')}
+          className="flex-1 flex items-center gap-2 p-3 glass-card cursor-pointer relative"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+        >
+          <Bell size={18} className="text-soul-primary" />
+          <span className="text-xs font-semibold text-soul-text">Notifications</span>
+          {unreadNotifCount > 0 && (
+            <div
+              className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold"
+              style={{ background: 'linear-gradient(135deg, #7C6FF7, #F472B6)' }}
+            >
+              {unreadNotifCount}
+            </div>
+          )}
+        </motion.button>
+        <motion.button
+          onClick={() => navigate('/messages')}
+          className="flex-1 flex items-center gap-2 p-3 glass-card cursor-pointer relative"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+        >
+          <MessageSquare size={18} className="text-soul-secondary" />
+          <span className="text-xs font-semibold text-soul-text">Messages</span>
+          {unreadDMCount > 0 && (
+            <div
+              className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold"
+              style={{ background: 'linear-gradient(135deg, #F472B6, #fb7185)' }}
+            >
+              {unreadDMCount}
+            </div>
+          )}
+        </motion.button>
+      </div>
 
       {/* Soul quick chat widget */}
       <motion.div
@@ -33,7 +71,7 @@ export default function RightPanel() {
           <SoulAvatar size="sm" />
           <div>
             <p className="font-display font-bold text-sm">Talk to Soul</p>
-            <p className="text-xs opacity-80">Your AI companion is here 💙</p>
+            <p className="text-xs opacity-80">Your AI companion 💙</p>
           </div>
         </div>
         <p className="text-xs mt-3 opacity-70 relative z-10 italic">
@@ -92,6 +130,43 @@ export default function RightPanel() {
         </motion.div>
       )}
 
+      {/* Live rooms */}
+      <div className="glass-card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold text-soul-muted uppercase tracking-wide">
+            🔴 Live Rooms
+          </p>
+          <button
+            className="text-xs text-soul-primary font-semibold"
+            onClick={() => navigate('/rooms')}
+          >
+            See all →
+          </button>
+        </div>
+        <div className="space-y-2">
+          {ROOMS.map(room => (
+            <motion.div
+              key={room.id}
+              className="flex items-center gap-3 p-2 rounded-xl hover:bg-soul-bg cursor-pointer transition-colors"
+              onClick={() => navigate(`/rooms/${room.id}`)}
+              whileHover={{ x: 2 }}
+            >
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
+                style={{ backgroundColor: `${room.color}20` }}
+              >
+                {room.emoji}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-soul-text">{room.name}</p>
+                <p className="text-[10px] text-soul-muted truncate">{room.desc}</p>
+              </div>
+              <div className="w-1.5 h-1.5 bg-green-400 rounded-full flex-shrink-0 animate-pulse" />
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
       {/* Suggested communities */}
       {suggestedCommunities.length > 0 && (
         <div className="glass-card p-4">
@@ -123,30 +198,8 @@ export default function RightPanel() {
             className="mt-3 text-xs text-soul-primary font-semibold hover:underline"
             onClick={() => navigate('/communities')}
           >
-            See all communities →
+            See all →
           </button>
-        </div>
-      )}
-
-      {/* Badges preview */}
-      {userProfile?.badges?.length > 0 && (
-        <div className="glass-card p-4">
-          <p className="text-xs font-semibold text-soul-muted uppercase tracking-wide mb-3">
-            Your Badges
-          </p>
-          <div className="flex gap-2 flex-wrap">
-            {userProfile.badges.slice(0, 6).map(badge => (
-              <span key={badge} className="text-2xl" title={badge}>
-                {badge === 'early_bird' ? '🐦' :
-                 badge === 'soul_seeker' ? '✨' :
-                 badge === 'mood_master' ? '😊' :
-                 badge === 'connector' ? '🤝' :
-                 badge === 'storyteller' ? '📝' :
-                 badge === 'community_gem' ? '💎' :
-                 badge === 'streak_7' ? '🔥' : '⭐'}
-              </span>
-            ))}
-          </div>
         </div>
       )}
 

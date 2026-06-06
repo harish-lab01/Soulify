@@ -1,11 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MoreHorizontal, MessageCircle, Share2, Trash2, UserCircle } from 'lucide-react';
+import {
+  MoreHorizontal, MessageCircle, Share2, Trash2, UserCircle,
+  CheckCircle2, Users,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MOODS, COMMUNITIES } from '../../utils/constants';
 import { formatTimeAgo } from '../../utils/helpers';
-import { deletePost } from '../../firebase/firestore';
+import { deletePost, votePoll, getPollVote } from '../../firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
+import { useApp } from '../../context/AppContext';
 import Avatar from '../ui/Avatar';
 import Badge from '../ui/Badge';
 import ReactionBar from './ReactionBar';
@@ -13,18 +17,43 @@ import CommentSection from './CommentSection';
 
 export default function PostCard({ post }) {
   const { user } = useAuth();
+  const { addToast } = useApp();
   const navigate = useNavigate();
   const [showComments, setShowComments] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Poll state
+  const [pollData, setPollData] = useState(post.poll || null);
+  const [userVote, setUserVote] = useState(null);
+  const [voting, setVoting] = useState(false);
+
   const mood = post.mood ? MOODS.find(m => m.id === post.mood) : null;
   const community = post.communityId ? COMMUNITIES.find(c => c.id === post.communityId) : null;
   const isOwner = user?.uid === post.authorId;
 
+  // Keep poll in sync with prop updates
+  useEffect(() => {
+    setPollData(post.poll || null);
+  }, [post.poll]);
+
+  // Load user's existing poll vote
+  useEffect(() => {
+    if (post.type === 'poll' && user) {
+      getPollVote(post.id, user.uid).then(vote => {
+        if (vote !== null) setUserVote(vote);
+      });
+    }
+  }, [post.id, user]);
+
   const handleDelete = async () => {
     if (!isOwner) return;
-    await deletePost(post.id);
+    try {
+      await deletePost(post.id);
+      addToast('Post deleted', 'success');
+    } catch {
+      addToast('Failed to delete post', 'error');
+    }
     setShowMenu(false);
   };
 
@@ -43,6 +72,35 @@ export default function PostCard({ post }) {
 
   const goToProfile = () => navigate(`/profile/${post.authorId}`);
 
+  // ─── Poll voting ────────────────────────────────────────────────────────────
+  const handlePollVote = async (optionIndex) => {
+    if (!user || userVote !== null || voting) return;
+    setVoting(true);
+
+    // Optimistic update
+    const newOptions = pollData.options.map((opt, i) => ({
+      ...opt,
+      votes: i === optionIndex ? (opt.votes || 0) + 1 : (opt.votes || 0),
+    }));
+    setPollData({ ...pollData, options: newOptions });
+    setUserVote(optionIndex);
+
+    try {
+      await votePoll(post.id, user.uid, optionIndex);
+      addToast('Vote recorded! 🗳️', 'success');
+    } catch (err) {
+      // Revert optimistic update
+      setPollData(post.poll);
+      setUserVote(null);
+      addToast('Failed to vote', 'error');
+    } finally {
+      setVoting(false);
+    }
+  };
+
+  // Compute poll total votes & percentages
+  const pollTotal = pollData?.options?.reduce((sum, o) => sum + (o.votes || 0), 0) || 0;
+
   return (
     <motion.div
       className="bg-white/70 backdrop-blur-xl border border-white/50 rounded-3xl overflow-hidden"
@@ -51,16 +109,12 @@ export default function PostCard({ post }) {
       animate={{ opacity: 1, y: 0 }}
       layout
     >
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="p-4 pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="cursor-pointer" onClick={goToProfile}>
-              <Avatar
-                src={post.authorPhoto}
-                name={post.authorName}
-                size="md"
-              />
+              <Avatar src={post.authorPhoto} name={post.authorName} size="md" />
             </div>
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -83,7 +137,7 @@ export default function PostCard({ post }) {
             </div>
           </div>
 
-          {/* Options */}
+          {/* 3-dot menu */}
           <div className="relative">
             <motion.button
               onClick={() => setShowMenu(!showMenu)}
@@ -96,7 +150,7 @@ export default function PostCard({ post }) {
             <AnimatePresence>
               {showMenu && (
                 <motion.div
-                  className="absolute right-0 top-8 bg-white rounded-2xl shadow-lg border border-soul-border z-10 overflow-hidden min-w-[140px]"
+                  className="absolute right-0 top-8 bg-white rounded-2xl shadow-lg border border-soul-border z-10 overflow-hidden min-w-[160px]"
                   initial={{ opacity: 0, scale: 0.9, y: -10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9, y: -10 }}
@@ -106,16 +160,20 @@ export default function PostCard({ post }) {
                       onClick={handleDelete}
                       className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-500 hover:bg-red-50 transition-colors"
                     >
-                      <Trash2 size={14} />
-                      Delete post
+                      <Trash2 size={14} /> Delete post
                     </button>
                   )}
+                  <button
+                    onClick={() => { navigate(`/messages/${post.authorId}`, { state: { otherUserName: post.authorName, otherUserPhoto: post.authorPhoto } }); setShowMenu(false); }}
+                    className="w-full flex items-center gap-2 px-4 py-3 text-sm text-soul-muted hover:bg-soul-bg text-left transition-colors"
+                  >
+                    <MessageCircle size={14} /> Send message
+                  </button>
                   <button
                     onClick={() => { goToProfile(); setShowMenu(false); }}
                     className="w-full flex items-center gap-2 px-4 py-3 text-sm text-soul-muted hover:bg-soul-bg text-left transition-colors"
                   >
-                    <UserCircle size={14} />
-                    View profile
+                    <UserCircle size={14} /> View profile
                   </button>
                   <button
                     onClick={() => setShowMenu(false)}
@@ -138,37 +196,96 @@ export default function PostCard({ post }) {
           </div>
         )}
 
-        {/* Content */}
+        {/* ── Content ── */}
         <div className="mt-3">
           {post.content && (
             <p className="text-sm text-soul-text leading-relaxed">{post.content}</p>
           )}
+
+          {/* Image */}
           {post.type === 'image' && post.imageURL && (
             <img
               src={post.imageURL}
               alt="Post"
-              className="mt-3 w-full rounded-2xl object-cover max-h-64"
+              className="mt-3 w-full rounded-2xl object-cover max-h-80"
             />
           )}
-          {post.type === 'poll' && post.poll && (
+
+          {/* ── Poll ── */}
+          {post.type === 'poll' && pollData?.options && (
             <div className="mt-3 space-y-2">
-              {post.poll.options.map((opt, i) => (
-                <div key={i} className="bg-soul-bg rounded-xl p-3 text-sm flex justify-between">
-                  <span>{opt.text}</span>
-                  <span className="text-soul-muted font-semibold">{opt.votes || 0}</span>
-                </div>
-              ))}
+              {pollData.options.map((opt, i) => {
+                const votes = opt.votes || 0;
+                const pct = pollTotal > 0 ? Math.round((votes / pollTotal) * 100) : 0;
+                const isVoted = userVote === i;
+                const hasVoted = userVote !== null;
+
+                return (
+                  <motion.button
+                    key={i}
+                    onClick={() => handlePollVote(i)}
+                    disabled={hasVoted || voting || !user}
+                    className="w-full relative overflow-hidden rounded-2xl text-left transition-all"
+                    style={{
+                      border: `2px solid ${isVoted ? '#7C6FF7' : '#E8E4FF'}`,
+                      cursor: hasVoted ? 'default' : 'pointer',
+                    }}
+                    whileHover={!hasVoted ? { scale: 1.01 } : {}}
+                    whileTap={!hasVoted ? { scale: 0.99 } : {}}
+                  >
+                    {/* Progress fill */}
+                    {hasVoted && (
+                      <motion.div
+                        className="absolute inset-0 rounded-xl"
+                        style={{ backgroundColor: isVoted ? '#7C6FF720' : '#F9F7FF' }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.6, ease: 'easeOut' }}
+                      />
+                    )}
+
+                    <div className="relative flex items-center justify-between px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {isVoted && (
+                          <CheckCircle2 size={15} className="text-soul-primary flex-shrink-0" />
+                        )}
+                        <span
+                          className={`text-sm font-medium ${isVoted ? 'text-soul-primary' : 'text-soul-text'}`}
+                        >
+                          {opt.text}
+                        </span>
+                      </div>
+                      {hasVoted && (
+                        <span className="text-xs font-bold text-soul-muted ml-2">{pct}%</span>
+                      )}
+                    </div>
+                  </motion.button>
+                );
+              })}
+
+              {/* Poll meta */}
+              <div className="flex items-center gap-1.5 mt-1 text-xs text-soul-muted">
+                <Users size={11} />
+                <span>{pollTotal} {pollTotal === 1 ? 'vote' : 'votes'}</span>
+                {userVote !== null && (
+                  <span className="text-soul-primary font-semibold ml-1">· You voted</span>
+                )}
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Reaction bar */}
+      {/* ── Reaction bar ── */}
       <div className="px-4 pb-3">
-        <ReactionBar postId={post.id} reactionCounts={post.reactionCounts} />
+        <ReactionBar
+          postId={post.id}
+          reactionCounts={post.reactionCounts}
+          postAuthorId={post.authorId}
+        />
       </div>
 
-      {/* Footer */}
+      {/* ── Footer ── */}
       <div className="px-4 pb-3 flex items-center gap-4 border-t border-soul-border/30 pt-3">
         <motion.button
           onClick={() => setShowComments(!showComments)}
@@ -188,7 +305,7 @@ export default function PostCard({ post }) {
         </motion.button>
       </div>
 
-      {/* Comments */}
+      {/* ── Comments ── */}
       <AnimatePresence>
         {showComments && (
           <motion.div

@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -24,9 +25,18 @@ const app = initializeApp(firebaseConfig);
 
 export const db = getFirestore(app);
 export const auth = getAuth(app);
-
-// Storage and Realtime DB are optional paid features — not initialized
 export const storage = null;
-export const rtdb = null;
+
+// Realtime Database — enabled for DMs and Connection Rooms
+// If databaseURL is not set, rtdb will be null (graceful fallback)
+export let rtdb = null;
+try {
+  if (firebaseConfig.databaseURL) {
+    rtdb = getDatabase(app);
+  }
+} catch (e) {
+  console.warn('Realtime DB not available:', e.message);
+  rtdb = null;
+}
 
 export default app;

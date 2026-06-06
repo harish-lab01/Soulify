@@ -3,12 +3,14 @@ import { COMMUNITIES } from '../../utils/constants';
 import { joinCommunity, leaveCommunity } from '../../firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
+import { useBadgeAwarder } from '../../hooks/useBadgeAwarder';
 import CommunityCard from './CommunityCard';
 
 export default function CommunityList() {
   const navigate = useNavigate();
   const { user, userProfile, refreshProfile } = useAuth();
   const { addToast } = useApp();
+  const { checkAndAward } = useBadgeAwarder();
 
   const joinedCommunities = userProfile?.communities || [];
 
@@ -22,6 +24,9 @@ export default function CommunityList() {
       } else {
         await joinCommunity(user.uid, communityId);
         addToast('Joined! 🎉', 'success');
+        // Check community_gem badge (joined 3+ communities)
+        const newCount = joinedCommunities.length + 1;
+        await checkAndAward({ communityCount: newCount });
       }
       await refreshProfile();
     } catch (err) {

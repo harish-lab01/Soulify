@@ -4,6 +4,7 @@ import { X, FileText, Smile, Image, BarChart2, Send, AlertCircle } from 'lucide-
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { createPost } from '../../firebase/firestore';
+import { useBadgeAwarder } from '../../hooks/useBadgeAwarder';
 import MoodPicker from '../mood/MoodPicker';
 import Button from '../ui/Button';
 import Avatar from '../ui/Avatar';
@@ -67,6 +68,7 @@ async function compressImageToBase64(file) {
 export default function CreatePost({ onClose, communityId = null }) {
   const { user, userProfile } = useAuth();
   const { addToast } = useApp();
+  const { checkAndAward } = useBadgeAwarder();
   const [step, setStep]               = useState('type');
   const [postType, setPostType]       = useState(null);
   const [content, setContent]         = useState('');
@@ -130,6 +132,8 @@ export default function CreatePost({ onClose, communityId = null }) {
           : null,
       });
       addToast('Post shared! 🌸', 'success');
+      // Check badges after posting
+      checkAndAward({ postCount: (userProfile?.postCount || 0) + 1 });
       onClose();
     } catch (err) {
       console.error('Post failed:', err);

@@ -1,24 +1,24 @@
 import { motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Bot, Smile, Users, User } from 'lucide-react';
+import { Home, Bot, Smile, Users, User, Compass, MessageSquare } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
 
 const TABS = [
-  { id: 'home',      icon: Home,  label: 'Home',      path: '/home' },
-  { id: 'soul',      icon: Bot,   label: 'Soul',       path: '/soul' },
-  { id: 'mood',      icon: Smile, label: 'Mood',       path: '/mood' },
-  { id: 'community', icon: Users, label: 'Community',  path: '/communities' },
-  { id: 'profile',   icon: User,  label: 'Profile',    path: '/profile' },
+  { id: 'home',      icon: Home,         label: 'Home',     path: '/home' },
+  { id: 'explore',   icon: Compass,      label: 'Explore',  path: '/explore' },
+  { id: 'soul',      icon: Bot,          label: 'Soul',     path: '/soul' },
+  { id: 'community', icon: Users,        label: 'Community',path: '/communities' },
+  { id: 'profile',   icon: User,         label: 'Profile',  path: '/profile' },
 ];
 
 export default function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { unreadNotifCount, unreadDMCount } = useApp();
 
   const activeTab = TABS.find(t => location.pathname.startsWith(t.path))?.id || 'home';
 
   return (
-    // lg:hidden — hidden on desktop (desktop uses SideNav instead)
-    // fixed at bottom, always above ALL page content (z-[100])
     <nav
       className="lg:hidden fixed bottom-0 left-0 right-0 z-[100]"
       style={{
@@ -33,6 +33,7 @@ export default function BottomNav() {
         {TABS.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
+          const badgeCount = tab.id === 'home' ? unreadNotifCount : 0;
 
           return (
             <button
@@ -51,15 +52,22 @@ export default function BottomNav() {
                 />
               )}
 
-              {/* Icon */}
-              <Icon
-                size={23}
-                strokeWidth={isActive ? 2.5 : 1.8}
-                style={{
-                  color: isActive ? '#7C6FF7' : '#9CA3AF',
-                  transition: 'color 0.2s',
-                }}
-              />
+              {/* Icon + badge */}
+              <div className="relative">
+                <Icon
+                  size={23}
+                  strokeWidth={isActive ? 2.5 : 1.8}
+                  style={{
+                    color: isActive ? '#7C6FF7' : '#9CA3AF',
+                    transition: 'color 0.2s',
+                  }}
+                />
+                {badgeCount > 0 && (
+                  <div className="absolute -top-1 -right-1.5 w-4 h-4 rounded-full bg-soul-secondary flex items-center justify-center text-white text-[8px] font-bold">
+                    {badgeCount > 9 ? '9+' : badgeCount}
+                  </div>
+                )}
+              </div>
 
               {/* Label */}
               <span

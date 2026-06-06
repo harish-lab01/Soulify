@@ -24,5 +24,27 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
       }
     })
-  ]
+  ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React runtime
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          // Animation library
+          'vendor-motion': ['framer-motion'],
+          // Firebase (largest dependency — split by service)
+          'firebase-core': ['firebase/app'],
+          'firebase-auth': ['firebase/auth'],
+          'firebase-firestore': ['firebase/firestore'],
+          'firebase-database': ['firebase/database'],
+          // UI icons
+          'vendor-icons': ['lucide-react'],
+          // Lottie
+          'vendor-lottie': ['lottie-react'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 600,
+  }
 })

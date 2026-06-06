@@ -6,16 +6,19 @@ import { useApp } from '../../context/AppContext';
 import { callSoul, buildSystemPrompt } from '../../gemini/api';
 import { saveSoulMessage, getSoulMessages } from '../../firebase/firestore';
 import { detectCrisis, CRISIS_RESOURCES } from '../../utils/crisisKeywords';
+import { useBadgeAwarder } from '../../hooks/useBadgeAwarder';
 import MessageBubble from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
 
 export default function SoulChat({ mode }) {
   const { user, userProfile } = useAuth();
   const { todayMood } = useApp();
+  const { checkAndAward } = useBadgeAwarder();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showCrisis, setShowCrisis] = useState(false);
+  const [hasAwarded, setHasAwarded] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -87,6 +90,11 @@ export default function SoulChat({ mode }) {
         mode,
         date: new Date().toISOString().split('T')[0],
       });
+      // Award soul_seeker badge on first real message
+      if (!hasAwarded) {
+        setHasAwarded(true);
+        checkAndAward({ hasChatted: true });
+      }
     }
 
     if (showCrisis) return; // Don't send to AI during crisis

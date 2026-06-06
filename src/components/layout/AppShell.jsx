@@ -8,12 +8,20 @@ import ToastContainer from '../ui/Toast';
 import Modal from '../ui/Modal';
 import CreatePost from '../feed/CreatePost';
 
-const FULL_SCREEN_ROUTES = ['/soul'];
+// Routes that take the full screen (no sidebar, no right panel, no bottom padding)
+const FULL_SCREEN_ROUTES = ['/soul', '/messages/', '/rooms/'];
+// Routes that hide the right panel but keep sidebar
+const NO_RIGHT_PANEL_ROUTES = ['/explore', '/notifications', '/rooms', '/messages'];
 
 export default function AppShell() {
   const location = useLocation();
   const [showCreate, setShowCreate] = useState(false);
-  const isFullScreen = FULL_SCREEN_ROUTES.some(r => location.pathname.startsWith(r));
+
+  const isFullScreen = FULL_SCREEN_ROUTES.some(r => location.pathname.startsWith(r))
+    && location.pathname !== '/messages'
+    && location.pathname !== '/rooms';
+
+  const hideRightPanel = isFullScreen || NO_RIGHT_PANEL_ROUTES.some(r => location.pathname.startsWith(r));
 
   return (
     <div className="min-h-screen relative">
@@ -26,16 +34,18 @@ export default function AppShell() {
         {/* Left sidebar */}
         <SideNav onCreatePost={() => setShowCreate(true)} />
 
-        {/* Center content */}
+        {/* Center content — max width varies by page type */}
         <main
           className="flex-1 min-w-0 overflow-y-auto"
-          style={{ maxWidth: isFullScreen ? undefined : '680px' }}
+          style={{
+            maxWidth: isFullScreen ? '100%' : hideRightPanel ? '800px' : '680px',
+          }}
         >
           <Outlet />
         </main>
 
-        {/* Right panel — hidden on full-screen pages */}
-        {!isFullScreen && (
+        {/* Right panel */}
+        {!hideRightPanel && (
           <div className="flex-shrink-0">
             <RightPanel />
           </div>
@@ -54,7 +64,7 @@ export default function AppShell() {
         <Outlet />
       </div>
 
-      {/* Bottom nav — mobile only, always on top */}
+      {/* Bottom nav — mobile only */}
       <BottomNav />
 
       {/* Create post modal */}
