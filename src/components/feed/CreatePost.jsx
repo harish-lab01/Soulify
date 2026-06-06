@@ -119,23 +119,22 @@ export default function CreatePost({ onClose, communityId = null }) {
     return false;
   };
 
-  /* ─────────────────────────────────────────────────────────
-     Layout:
-       [header row]           ← never scrolls
-       [scrollable content]   ← scrolls when content overflows
-       [submit button]        ← always pinned at the bottom  (compose step only)
-  ───────────────────────────────────────────────────────── */
   return (
-    /* The outer wrapper fills whatever space the Modal gives it.
-       We use flex-col so the pinned footer works correctly. */
-    <div className="flex flex-col min-h-0">
-
-      {/* ── Header row ── */}
-      <div className="flex items-center justify-between mb-3">
+    /*
+     * This component renders INSIDE the Modal's scrollable area.
+     * For the compose step we use a flex-col layout:
+     *   - scrollable content on top
+     *   - submit button pinned at the very bottom via sticky
+     *
+     * The Modal itself provides the scrollable container.
+     */
+    <div>
+      {/* ── Row: Back / user info + Close ── */}
+      <div className="flex items-center justify-between mb-4">
         {step === 'compose' ? (
           <button
             onClick={() => { setStep('type'); setError(''); }}
-            className="text-soul-primary text-sm font-semibold px-1 py-1"
+            className="flex items-center gap-1 text-soul-primary text-sm font-semibold"
           >
             ← Back
           </button>
@@ -150,50 +149,54 @@ export default function CreatePost({ onClose, communityId = null }) {
         </button>
       </div>
 
-      {/* ── Step 1 — Type picker (no footer needed) ── */}
       <AnimatePresence mode="wait">
+
+        {/* ═══ STEP 1: Type picker ═══ */}
         {step === 'type' && (
           <motion.div
             key="type"
             initial={{ opacity: 0, x: -16 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -16 }}
-            transition={{ duration: 0.18 }}
+            transition={{ duration: 0.15 }}
           >
+            {/*
+             * Reduced padding on cards (p-4 instead of p-5) so all 4 cards
+             * fit within the sheet height without needing to scroll.
+             */}
             <div className="grid grid-cols-2 gap-3">
               {POST_TYPES.map(type => {
                 const Icon = type.icon;
                 return (
-                  <motion.button
+                  <button
                     key={type.id}
                     onClick={() => handleTypeSelect(type.id)}
-                    className="flex flex-col items-center gap-2 p-5 rounded-2xl border-2 border-soul-border bg-soul-bg/50 active:scale-95 transition-transform"
-                    whileTap={{ scale: 0.96 }}
+                    className="flex flex-col items-center gap-2 p-4 rounded-2xl border-2 border-soul-border bg-soul-bg/50 active:scale-95 transition-transform touch-manipulation"
                   >
                     <div
-                      className="w-11 h-11 rounded-full flex items-center justify-center"
+                      className="w-10 h-10 rounded-full flex items-center justify-center"
                       style={{ backgroundColor: `${type.color}20` }}
                     >
-                      <Icon size={22} style={{ color: type.color }} />
+                      <Icon size={20} style={{ color: type.color }} />
                     </div>
                     <span className="text-sm font-semibold text-soul-text text-center leading-tight">
                       {type.label}
                     </span>
-                  </motion.button>
+                  </button>
                 );
               })}
             </div>
           </motion.div>
         )}
 
-        {/* ── Step 2 — Compose ── */}
+        {/* ═══ STEP 2: Compose ═══ */}
         {step === 'compose' && (
           <motion.div
             key="compose"
             initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 16 }}
-            transition={{ duration: 0.18 }}
+            transition={{ duration: 0.15 }}
             className="flex flex-col gap-3"
           >
             {/* Text area */}
@@ -225,7 +228,7 @@ export default function CreatePost({ onClose, communityId = null }) {
                     <img
                       src={imagePreview}
                       className="w-full rounded-2xl object-cover"
-                      style={{ maxHeight: '160px' }}
+                      style={{ maxHeight: '150px' }}
                       alt="Preview"
                     />
                     <button
@@ -234,13 +237,13 @@ export default function CreatePost({ onClose, communityId = null }) {
                     >
                       <X size={13} />
                     </button>
-                    <p className="mt-1.5 text-xs text-soul-muted text-center">
+                    <p className="mt-1 text-xs text-soul-muted text-center">
                       {(imageFile.size / 1024 / 1024).toFixed(1)} MB · will be compressed
                     </p>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center gap-2 p-5 border-2 border-dashed border-soul-border rounded-2xl cursor-pointer">
-                    <Image size={26} className="text-soul-muted" />
+                  <label className="flex flex-col items-center gap-2 py-5 px-4 border-2 border-dashed border-soul-border rounded-2xl cursor-pointer touch-manipulation">
+                    <Image size={24} className="text-soul-muted" />
                     <span className="text-sm text-soul-muted font-medium">Tap to upload image</span>
                     <span className="text-xs text-soul-muted opacity-60">JPG, PNG, GIF · max 15MB</span>
                     <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
@@ -279,18 +282,22 @@ export default function CreatePost({ onClose, communityId = null }) {
 
             {/* Error */}
             {error && (
-              <motion.div
-                className="flex items-start gap-2 p-3 rounded-2xl bg-red-50 border border-red-100"
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
+              <div className="flex items-start gap-2 p-3 rounded-2xl bg-red-50 border border-red-100">
                 <AlertCircle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-red-600">{error}</p>
-              </motion.div>
+              </div>
             )}
 
-            {/* ── Submit button — pinned at bottom, always fully visible ── */}
-            <div className="pt-1">
+            {/*
+             * Submit button — sticky bottom so it's ALWAYS visible even
+             * when content above is taller than the scroll area.
+             * The Modal's scrollable container is the scroll root,
+             * so sticky here means it sticks to the bottom of that scroll container.
+             */}
+            <div
+              className="sticky bottom-0 bg-white pt-3 pb-1"
+              style={{ marginLeft: '-20px', marginRight: '-20px', paddingLeft: '20px', paddingRight: '20px' }}
+            >
               <Button onClick={handleSubmit} fullWidth disabled={!canSubmit()}>
                 <div className="flex items-center justify-center gap-2">
                   {submitting ? (
@@ -307,6 +314,7 @@ export default function CreatePost({ onClose, communityId = null }) {
                 </div>
               </Button>
             </div>
+
           </motion.div>
         )}
       </AnimatePresence>
