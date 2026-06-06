@@ -195,8 +195,8 @@ export default function SoulChat({ mode }) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input bar */}
-      <div className="sticky bottom-0 px-4 py-3 bg-white/70 backdrop-blur-xl border-t border-soul-border/50">
+      {/* Input bar — not sticky, just part of the flex column */}
+      <div className="flex-shrink-0 px-4 py-3 bg-white/70 backdrop-blur-xl border-t border-soul-border/50">
         <div className="flex items-end gap-2 bg-white rounded-full border border-soul-border shadow-sm px-4 py-2">
           <textarea
             ref={inputRef}

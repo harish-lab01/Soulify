@@ -8,7 +8,6 @@ import ToastContainer from '../ui/Toast';
 import Modal from '../ui/Modal';
 import CreatePost from '../feed/CreatePost';
 
-// Soul page gets full-screen treatment — no right panel, different padding
 const FULL_SCREEN_ROUTES = ['/soul'];
 
 export default function AppShell() {
@@ -29,36 +28,9 @@ export default function AppShell() {
 
         {/* Center content */}
         <main
-          className={`
-            flex-1 min-w-0 overflow-y-auto
-            ${isFullScreen ? '' : 'py-0'}
-          `}
-          style={{
-            maxWidth: isFullScreen ? undefined : '680px',
-          }}
+          className="flex-1 min-w-0 overflow-y-auto"
+          style={{ maxWidth: isFullScreen ? undefined : '680px' }}
         >
-          {/* Thin top bar for desktop — just branding + notif on full-screen pages */}
-          {isFullScreen && (
-            <div className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-soul-border/50 px-6 py-3">
-              <div className="flex items-center justify-between">
-                <span className="font-display font-bold text-lg"
-                  style={{
-                    background: 'linear-gradient(135deg, #7C6FF7 0%, #F472B6 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                  }}
-                >
-                  Soul AI
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                  <span className="text-xs text-soul-muted">Online</span>
-                </div>
-              </div>
-            </div>
-          )}
-
           <Outlet />
         </main>
 
@@ -71,16 +43,18 @@ export default function AppShell() {
       </div>
 
       {/* ── Mobile layout ──────────────────────────────────── */}
-      <div className="lg:hidden relative z-10 pb-24">
+      <div
+        className="lg:hidden relative z-10"
+        // Soul page manages its own height; other pages need pb for bottom nav
+        style={{ paddingBottom: isFullScreen ? '0' : '80px' }}
+      >
         <Outlet />
       </div>
 
-      {/* Bottom nav — mobile only */}
-      <div className="lg:hidden">
-        <BottomNav />
-      </div>
+      {/* Bottom nav — mobile only, always on top */}
+      <BottomNav />
 
-      {/* Create post modal (desktop sidebar button) */}
+      {/* Create post modal */}
       <Modal
         isOpen={showCreate}
         onClose={() => setShowCreate(false)}
