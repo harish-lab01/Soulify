@@ -101,6 +101,14 @@ export const getSoulMessages = (userId, callback) => {
 // ─── Posts ────────────────────────────────────────────────────────────────────
 
 export const createPost = async (data) => {
+  // Guard: Firestore has a hard 1MB document limit.
+  // imageURL is base64 — check its size before attempting write.
+  if (data.imageURL && data.imageURL.length > 750 * 1024) {
+    const err = new Error('Image data exceeds Firestore document size limit.');
+    err.code = 'invalid-argument';
+    throw err;
+  }
+
   const ref = await addDoc(collection(db, 'posts'), {
     ...data,
     reactionCounts: { hug: 0, feel_this: 0, got_this: 0, same: 0, love: 0 },

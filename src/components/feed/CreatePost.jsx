@@ -15,25 +15,53 @@ const POST_TYPES = [
   { id: 'poll',  icon: BarChart2,label: 'Create a poll',   color: '#FBBF24' },
 ];
 
-function compressImageToBase64(file, maxWidth = 900, quality = 0.75) {
-  return new Promise((resolve, reject) => {
+/**
+ * Compress image to base64 for Firestore storage.
+ * Firestore hard limit = 1MB per document. Base64 adds ~33% overhead.
+ * Target: final base64 string ≤ 700KB, so the whole post document stays under 1MB.
+ *
+ * Strategy: try progressively lower quality until the result is small enough.
+ */
+async function compressImageToBase64(file) {
+  const MAX_BASE64_BYTES = 700 * 1024; // 700KB — leaves room for other post fields
+  const MAX_WIDTH = 800;
+
+  const dataUrl = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = reject;
     reader.onload = (e) => {
       const img = document.createElement('img');
       img.onerror = reject;
       img.onload = () => {
-        const ratio = Math.min(maxWidth / img.width, 1);
+        const ratio = Math.min(MAX_WIDTH / img.width, 1);
         const canvas = document.createElement('canvas');
         canvas.width  = Math.round(img.width  * ratio);
         canvas.height = Math.round(img.height * ratio);
         canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
+
+        // Try quality levels from 0.7 down to 0.2 until small enough
+        const qualities = [0.7, 0.55, 0.4, 0.28, 0.2];
+        for (const q of qualities) {
+          const result = canvas.toDataURL('image/jpeg', q);
+          // base64 string length ≈ byte size (each char = 1 byte in ASCII range)
+          if (result.length <= MAX_BASE64_BYTES) {
+            return resolve(result);
+          }
+        }
+        // Last resort: smallest quality
+        resolve(canvas.toDataURL('image/jpeg', 0.15));
       };
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   });
+
+  // Final guard: if even the most aggressive compression is too big, throw a clear error
+  if (dataUrl.length > MAX_BASE64_BYTES) {
+    throw new Error('IMAGE_TOO_LARGE');
+  }
+
+  return dataUrl;
 }
 
 export default function CreatePost({ onClose, communityId = null }) {
@@ -59,8 +87,9 @@ export default function CreatePost({ onClose, communityId = null }) {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 15 * 1024 * 1024) {
-      setError('Image too large. Please use an image under 15MB.');
+    // 3MB raw ≈ ~800KB after compression — safely under Firestore's 1MB doc limit
+    if (file.size > 3 * 1024 * 1024) {
+      setError('Please choose an image smaller than 3MB.');
       return;
     }
     setError('');
@@ -76,7 +105,15 @@ export default function CreatePost({ onClose, communityId = null }) {
       let imageURL = null;
       if (postType === 'image' && imageFile) {
         setStatusMsg('Compressing image...');
-        imageURL = await compressImageToBase64(imageFile);
+        try {
+          imageURL = await compressImageToBase64(imageFile);
+        } catch (compressErr) {
+          setError('Image is too large even after compression. Please use a smaller image (under 2MB).');
+          addToast('Image too large 📷', 'error');
+          setSubmitting(false);
+          setStatusMsg('');
+          return;
+        }
       }
       setStatusMsg('Sharing...');
       await createPost({
@@ -101,6 +138,8 @@ export default function CreatePost({ onClose, communityId = null }) {
           ? 'Permission denied — check your Firestore rules.'
           : err?.message?.includes('quota')
           ? 'Firestore quota exceeded. Try again later.'
+          : err?.code === 'invalid-argument' || err?.message?.includes('exceeds')
+          ? 'Image is too large for storage. Please choose a smaller image.'
           : 'Something went wrong. Please try again.';
       setError(msg);
       addToast('Post failed 😔', 'error');
@@ -245,7 +284,7 @@ export default function CreatePost({ onClose, communityId = null }) {
                   <label className="flex flex-col items-center gap-2 py-5 px-4 border-2 border-dashed border-soul-border rounded-2xl cursor-pointer touch-manipulation">
                     <Image size={24} className="text-soul-muted" />
                     <span className="text-sm text-soul-muted font-medium">Tap to upload image</span>
-                    <span className="text-xs text-soul-muted opacity-60">JPG, PNG, GIF · max 15MB</span>
+                    <span className="text-xs text-soul-muted opacity-60">JPG, PNG, GIF · max 3MB</span>
                     <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                   </label>
                 )}
