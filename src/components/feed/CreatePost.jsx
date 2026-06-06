@@ -15,7 +15,6 @@ const POST_TYPES = [
   { id: 'poll',  icon: BarChart2,label: 'Create a poll',   color: '#FBBF24' },
 ];
 
-// Resize + compress image → base64 string (stored in Firestore, no Storage needed)
 function compressImageToBase64(file, maxWidth = 900, quality = 0.75) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -26,7 +25,7 @@ function compressImageToBase64(file, maxWidth = 900, quality = 0.75) {
       img.onload = () => {
         const ratio = Math.min(maxWidth / img.width, 1);
         const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * ratio);
+        canvas.width  = Math.round(img.width  * ratio);
         canvas.height = Math.round(img.height * ratio);
         canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
         resolve(canvas.toDataURL('image/jpeg', quality));
@@ -40,16 +39,16 @@ function compressImageToBase64(file, maxWidth = 900, quality = 0.75) {
 export default function CreatePost({ onClose, communityId = null }) {
   const { user, userProfile } = useAuth();
   const { addToast } = useApp();
-  const [step, setStep] = useState('type');
-  const [postType, setPostType] = useState(null);
-  const [content, setContent] = useState('');
+  const [step, setStep]               = useState('type');
+  const [postType, setPostType]       = useState(null);
+  const [content, setContent]         = useState('');
   const [selectedMood, setSelectedMood] = useState(null);
-  const [imageFile, setImageFile] = useState(null);
+  const [imageFile, setImageFile]     = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [pollOptions, setPollOptions] = useState(['', '']);
-  const [submitting, setSubmitting] = useState(false);
-  const [statusMsg, setStatusMsg] = useState('');
-  const [error, setError] = useState('');
+  const [submitting, setSubmitting]   = useState(false);
+  const [statusMsg, setStatusMsg]     = useState('');
+  const [error, setError]             = useState('');
 
   const handleTypeSelect = (type) => {
     setPostType(type);
@@ -73,20 +72,17 @@ export default function CreatePost({ onClose, communityId = null }) {
     if (submitting) return;
     setSubmitting(true);
     setError('');
-
     try {
       let imageURL = null;
-
       if (postType === 'image' && imageFile) {
         setStatusMsg('Compressing image...');
         imageURL = await compressImageToBase64(imageFile);
       }
-
       setStatusMsg('Sharing...');
       await createPost({
-        authorId: user.uid,
-        authorName: userProfile?.displayName || 'Anonymous',
-        authorPhoto: userProfile?.photoURL || '',
+        authorId:    user.uid,
+        authorName:  userProfile?.displayName || 'Anonymous',
+        authorPhoto: userProfile?.photoURL    || '',
         communityId,
         content,
         type: postType,
@@ -96,7 +92,6 @@ export default function CreatePost({ onClose, communityId = null }) {
           ? { options: pollOptions.filter(o => o.trim()).map(o => ({ text: o, votes: 0 })) }
           : null,
       });
-
       addToast('Post shared! 🌸', 'success');
       onClose();
     } catch (err) {
@@ -117,21 +112,30 @@ export default function CreatePost({ onClose, communityId = null }) {
 
   const canSubmit = () => {
     if (submitting) return false;
-    if (postType === 'text') return content.trim().length > 0;
-    if (postType === 'mood') return selectedMood !== null;
+    if (postType === 'text')  return content.trim().length > 0;
+    if (postType === 'mood')  return selectedMood !== null;
     if (postType === 'image') return imageFile !== null;
-    if (postType === 'poll') return pollOptions.filter(o => o.trim()).length >= 2;
+    if (postType === 'poll')  return pollOptions.filter(o => o.trim()).length >= 2;
     return false;
   };
 
+  /* ─────────────────────────────────────────────────────────
+     Layout:
+       [header row]           ← never scrolls
+       [scrollable content]   ← scrolls when content overflows
+       [submit button]        ← always pinned at the bottom  (compose step only)
+  ───────────────────────────────────────────────────────── */
   return (
-    <div className="flex flex-col">
-      {/* Header row (Back / user info + Close) */}
-      <div className="flex items-center justify-between mb-4">
+    /* The outer wrapper fills whatever space the Modal gives it.
+       We use flex-col so the pinned footer works correctly. */
+    <div className="flex flex-col min-h-0">
+
+      {/* ── Header row ── */}
+      <div className="flex items-center justify-between mb-3">
         {step === 'compose' ? (
           <button
             onClick={() => { setStep('type'); setError(''); }}
-            className="text-soul-primary text-sm font-semibold"
+            className="text-soul-primary text-sm font-semibold px-1 py-1"
           >
             ← Back
           </button>
@@ -146,52 +150,59 @@ export default function CreatePost({ onClose, communityId = null }) {
         </button>
       </div>
 
+      {/* ── Step 1 — Type picker (no footer needed) ── */}
       <AnimatePresence mode="wait">
-        {/* ── Step 1: Type selection ── */}
         {step === 'type' && (
           <motion.div
             key="type"
-            initial={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: -16 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="grid grid-cols-2 gap-3"
+            exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.18 }}
           >
-            {POST_TYPES.map(type => {
-              const Icon = type.icon;
-              return (
-                <motion.button
-                  key={type.id}
-                  onClick={() => handleTypeSelect(type.id)}
-                  className="flex flex-col items-center gap-2 p-5 rounded-2xl border-2 border-soul-border hover:border-soul-primary/40 bg-soul-bg/50 transition-colors"
-                  whileHover={{ scale: 1.03, y: -2 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ backgroundColor: `${type.color}20` }}>
-                    <Icon size={20} style={{ color: type.color }} />
-                  </div>
-                  <span className="text-sm font-semibold text-soul-text">{type.label}</span>
-                </motion.button>
-              );
-            })}
+            <div className="grid grid-cols-2 gap-3">
+              {POST_TYPES.map(type => {
+                const Icon = type.icon;
+                return (
+                  <motion.button
+                    key={type.id}
+                    onClick={() => handleTypeSelect(type.id)}
+                    className="flex flex-col items-center gap-2 p-5 rounded-2xl border-2 border-soul-border bg-soul-bg/50 active:scale-95 transition-transform"
+                    whileTap={{ scale: 0.96 }}
+                  >
+                    <div
+                      className="w-11 h-11 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: `${type.color}20` }}
+                    >
+                      <Icon size={22} style={{ color: type.color }} />
+                    </div>
+                    <span className="text-sm font-semibold text-soul-text text-center leading-tight">
+                      {type.label}
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </div>
           </motion.div>
         )}
 
-        {/* ── Step 2: Compose ── */}
+        {/* ── Step 2 — Compose ── */}
         {step === 'compose' && (
           <motion.div
             key="compose"
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            className="flex flex-col gap-4"
+            exit={{ opacity: 0, x: 16 }}
+            transition={{ duration: 0.18 }}
+            className="flex flex-col gap-3"
           >
-            {/* Text */}
+            {/* Text area */}
             {(postType === 'text' || postType === 'mood' || postType === 'image') && (
               <textarea
                 value={content}
                 onChange={e => setContent(e.target.value)}
                 placeholder={
-                  postType === 'mood' ? 'How does this mood feel for you? (optional)' :
+                  postType === 'mood'  ? 'How does this mood feel for you? (optional)' :
                   postType === 'image' ? 'Add a caption... (optional)' :
                   "What's on your mind?"
                 }
@@ -206,12 +217,17 @@ export default function CreatePost({ onClose, communityId = null }) {
               <MoodPicker selected={selectedMood} onSelect={setSelectedMood} />
             )}
 
-            {/* Image */}
+            {/* Image upload / preview */}
             {postType === 'image' && (
               <div>
                 {imagePreview ? (
                   <div className="relative">
-                    <img src={imagePreview} className="w-full rounded-2xl max-h-44 object-cover" alt="Preview" />
+                    <img
+                      src={imagePreview}
+                      className="w-full rounded-2xl object-cover"
+                      style={{ maxHeight: '160px' }}
+                      alt="Preview"
+                    />
                     <button
                       onClick={() => { setImageFile(null); setImagePreview(null); setError(''); }}
                       className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1.5"
@@ -223,8 +239,8 @@ export default function CreatePost({ onClose, communityId = null }) {
                     </p>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center gap-2 p-6 border-2 border-dashed border-soul-border rounded-2xl cursor-pointer hover:border-soul-primary/40 transition-colors">
-                    <Image size={28} className="text-soul-muted" />
+                  <label className="flex flex-col items-center gap-2 p-5 border-2 border-dashed border-soul-border rounded-2xl cursor-pointer">
+                    <Image size={26} className="text-soul-muted" />
                     <span className="text-sm text-soul-muted font-medium">Tap to upload image</span>
                     <span className="text-xs text-soul-muted opacity-60">JPG, PNG, GIF · max 15MB</span>
                     <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
@@ -233,7 +249,7 @@ export default function CreatePost({ onClose, communityId = null }) {
               </div>
             )}
 
-            {/* Poll */}
+            {/* Poll options */}
             {postType === 'poll' && (
               <div className="space-y-2">
                 <p className="text-sm font-semibold text-soul-text">Poll options</p>
@@ -251,7 +267,10 @@ export default function CreatePost({ onClose, communityId = null }) {
                   />
                 ))}
                 {pollOptions.length < 4 && (
-                  <button onClick={() => setPollOptions([...pollOptions, ''])} className="text-sm text-soul-primary underline">
+                  <button
+                    onClick={() => setPollOptions([...pollOptions, ''])}
+                    className="text-sm text-soul-primary underline"
+                  >
                     + Add option
                   </button>
                 )}
@@ -262,7 +281,7 @@ export default function CreatePost({ onClose, communityId = null }) {
             {error && (
               <motion.div
                 className="flex items-start gap-2 p-3 rounded-2xl bg-red-50 border border-red-100"
-                initial={{ opacity: 0, y: -5 }}
+                initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
               >
                 <AlertCircle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
@@ -270,22 +289,24 @@ export default function CreatePost({ onClose, communityId = null }) {
               </motion.div>
             )}
 
-            {/* Submit — always visible at the bottom */}
-            <Button onClick={handleSubmit} fullWidth disabled={!canSubmit()}>
-              <div className="flex items-center justify-center gap-2">
-                {submitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                    {statusMsg || 'Posting...'}
-                  </>
-                ) : (
-                  <>
-                    <Send size={16} />
-                    Share with community
-                  </>
-                )}
-              </div>
-            </Button>
+            {/* ── Submit button — pinned at bottom, always fully visible ── */}
+            <div className="pt-1">
+              <Button onClick={handleSubmit} fullWidth disabled={!canSubmit()}>
+                <div className="flex items-center justify-center gap-2">
+                  {submitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      {statusMsg || 'Posting...'}
+                    </>
+                  ) : (
+                    <>
+                      <Send size={16} />
+                      Share with community
+                    </>
+                  )}
+                </div>
+              </Button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
